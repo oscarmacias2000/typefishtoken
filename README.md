@@ -103,6 +103,8 @@ antes de lanzar un token. El éxito depende de construir una comunidad real.
 
 
 # 🚀 Polygon ERC-20 Token Project
+![image](https://docs.polygon.technology/logotype-for-dark-mode.svg)
+
 
 ## 📌 Overview
 
@@ -182,11 +184,14 @@ serve {path}D:\Your_project\Your_project\frontend
 
 
 6. Deploy nodo
+```bash
 npx hardhat node --port <port>
+```
 
 7. config proxy ngrok
+```bash
 .\ngrok.exe http <port>
-
+```
 ---
 
 ## 🔗 Interaction
