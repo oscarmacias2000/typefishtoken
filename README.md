@@ -100,3 +100,140 @@ Costo estimado: ~$2-5 USD en MATIC
 ## ⚠️ Aviso importante
 Este proyecto es con fines educativos. Investiga las regulaciones de tu país 
 antes de lanzar un token. El éxito depende de construir una comunidad real.
+
+
+# 🚀 Polygon ERC-20 Token Project
+
+## 📌 Overview
+
+This project implements an ERC-20 token deployed on the Polygon network. It is designed to serve as a digital asset within a service-based ecosystem inspired by airline platforms, enabling payments, rewards, and loyalty-style interactions.
+
+The goal is to demonstrate how blockchain technology can integrate with real-world services such as airline systems, offering fast, low-cost, and secure transactions.
+
+---
+
+## ⚙️ Tech Stack
+
+* Solidity (Smart Contracts)
+* Polygon (EVM-compatible network)
+* Web3.js / Ethers.js
+* Node.js (optional backend)
+* Metamask (wallet interaction)
+
+---
+
+## 🪙 Token Features
+
+* ERC-20 standard token
+* Transferable between users
+* Compatible with EVM networks
+* Can be used for:
+
+  * Payments
+  * Rewards systems
+  * Loyalty programs
+  * dApp integrations
+
+---
+
+## ✈️ Use Case (Aeromexico-style Service)
+
+This project simulates a token-based system for airline services, where users can:
+
+* Earn tokens as rewards for using services
+* Use tokens to pay for tickets or upgrades
+* Redeem tokens for exclusive benefits
+
+This demonstrates how tokenization can modernize customer engagement and digital payments in the aviation industry.
+
+---
+
+## 📦 Installation
+
+```bash
+# Clone repository
+git clone https://github.com/your-username/your-repo.git
+
+# Install dependencies
+npm install
+```
+
+---
+
+## 🚀 Deployment
+
+1. Configure your wallet (Metamask)
+2. Connect to Polygon (Mumbai or Mainnet)
+3. Compile smart contract:
+
+```bash
+npx hardhat compile
+```
+
+4. Deploy contract:
+
+```bash
+npx hardhat run scripts/deploy.js --network mumbai
+```
+5. Deploy frontend
+```bash
+serve {path}D:\Your_project\Your_project\frontend
+```
+
+
+6. Deploy nodo
+npx hardhat node --port <port>
+
+7. config proxy ngrok
+.\ngrok.exe http <port>
+
+---
+
+## 🔗 Interaction
+
+You can interact with the token using:
+
+* Web3.js / Ethers.js
+* Frontend dApp
+* Direct contract calls
+
+Example (Ethers.js):
+
+```javascript
+const contract = new ethers.Contract(address, abi, signer);
+await contract.transfer(recipient, amount);
+```
+
+---
+
+## 🔐 Security
+
+This project considers basic security practices:
+
+* Tested in local and testnet environments
+* Gas optimization
+* Prepared for future audits
+
+---
+
+## 📈 Future Improvements
+
+* Staking system
+* Advanced reward logic
+* Full dApp frontend
+* Integration with APIs
+* Security automation tools
+
+---
+
+## 👨‍💻 Author
+
+Developed as a personal project focused on blockchain, tokenization, and cybersecurity integration.
+
+---
+
+## 📄 License
+
+MIT License
+
+
