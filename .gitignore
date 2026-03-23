@@ -1,0 +1,21 @@
+# Secretos — NUNCA subir
+.env
+*.env
+.env.local
+.env.*.local
+
+# Dependencias
+node_modules/
+
+# Hardhat
+cache/
+artifacts/
+typechain-types/
+
+# Coverage
+coverage/
+coverage.json
+
+# Misc
+.DS_Store
+*.log
