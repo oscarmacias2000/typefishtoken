@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>TypeFish — TFISH/BNB Pool</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js"></script>
+<style>
+:root{--bg:#020609;--surface:#060d14;--surface2:#081018;--border:#0d1e2e;
+--accent:#0ea5e9;--green:#10b981;--amber:#f59e0b;--red:#f87171;
+--bnb:#f0b90b;--text:#d4dde8;--muted:#3d5a73;
+--mono:"Space Mono",monospace;--sans:"DM Sans",sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;z-index:0;
+background-image:linear-gradient(rgba(14,165,233,.02) 1px,transparent 1px),
+linear-gradient(90deg,rgba(240,185,11,.02) 1px,transparent 1px);
+background-size:52px 52px;pointer-events:none;}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;
+padding:0 24px;height:56px;background:rgba(2,6,9,.95);
+border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(20px);}
+.back-btn{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;
+color:var(--muted);text-decoration:none;padding:5px 12px;border-radius:6px;
+border:1px solid var(--border);transition:all .2s;cursor:pointer;letter-spacing:.5px;}
+.back-btn:hover{color:var(--accent);border-color:rgba(14,165,233,.3);}
+.tb-logo{display:flex;align-items:center;gap:8px;}
+.tb-logo-text{font-family:var(--mono);font-size:13px;font-weight:700;}
+.tb-logo-text span{color:var(--accent);}
+.pair-badge{font-family:var(--mono);font-size:11px;padding:4px 12px;border-radius:6px;
+background:linear-gradient(135deg,rgba(14,165,233,.1),rgba(240,185,11,.1));
+color:var(--text);border:1px solid rgba(240,185,11,.2);letter-spacing:.5px;
+display:flex;align-items:center;gap:6px;}
+.connect-btn{font-family:var(--mono);font-size:10px;background:transparent;
+border:1px solid var(--accent);color:var(--accent);padding:7px 14px;
+border-radius:6px;cursor:pointer;transition:all .2s;letter-spacing:.5px;}
+.connect-btn:hover{background:var(--accent);color:#000;}
+.connect-btn.connected{border-color:var(--green);color:var(--green);}
+
+main{max-width:1200px;margin:0 auto;padding:28px 24px;position:relative;z-index:1;}
+
+/* HERO PAIR */
+.pair-hero{background:var(--surface);border:1px solid var(--border);
+border-radius:16px;padding:28px 32px;margin-bottom:24px;
+position:relative;overflow:hidden;}
+.pair-hero::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+background:linear-gradient(90deg,var(--accent),var(--bnb),transparent);}
+.ph-top{display:flex;align-items:center;gap:20px;margin-bottom:20px;}
+.ph-logos{display:flex;align-items:center;}
+.ph-logo{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;
+justify-content:center;font-size:22px;border:2px solid var(--border);background:var(--surface2);}
+.ph-logo:last-child{margin-left:-14px;}
+.ph-info h1{font-family:var(--mono);font-size:22px;font-weight:700;margin-bottom:4px;}
+.ph-info p{font-size:13px;color:var(--muted);}
+.ph-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+.phs{background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+padding:14px 16px;text-align:center;}
+.phs-label{font-family:var(--mono);font-size:7px;text-transform:uppercase;
+letter-spacing:1.5px;color:var(--muted);margin-bottom:6px;}
+.phs-val{font-family:var(--mono);font-size:16px;font-weight:700;}
+
+/* MAIN GRID */
+.main-grid{display:grid;grid-template-columns:1fr 380px;gap:20px;margin-bottom:20px;}
+
+/* PRICE CHART */
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.cc-hdr{display:flex;align-items:center;justify-content:space-between;
+padding:14px 18px;border-bottom:1px solid var(--border);}
+.cc-title{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);}
+.tf-btns{display:flex;gap:4px;}
+.tf-btn{font-family:var(--mono);font-size:8px;padding:3px 8px;border-radius:4px;
+cursor:pointer;border:1px solid var(--border);color:var(--muted);transition:all .2s;}
+.tf-btn.active{background:rgba(240,185,11,.1);color:var(--bnb);border-color:rgba(240,185,11,.2);}
+canvas#pairChart{width:100%;display:block;}
+
+/* SWAP CARD */
+.swap-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.sc-tabs{display:flex;border-bottom:1px solid var(--border);}
+.sc-tab{flex:1;padding:13px;text-align:center;font-family:var(--mono);font-size:10px;
+cursor:pointer;transition:all .2s;color:var(--muted);border-bottom:2px solid transparent;letter-spacing:.5px;}
+.sc-tab.swap.active{color:var(--accent);border-color:var(--accent);background:rgba(14,165,233,.04);}
+.sc-tab.liq.active{color:var(--green);border-color:var(--green);background:rgba(16,185,129,.04);}
+.sc-tab.bridge.active{color:var(--bnb);border-color:var(--bnb);background:rgba(240,185,11,.04);}
+.sc-tab.stake.active{color:#a78bfa;border-color:#a78bfa;background:rgba(167,139,250,.04);}
+.sc-body{padding:18px;}
+.sc-label{font-family:var(--mono);font-size:8px;text-transform:uppercase;
+letter-spacing:1px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;}
+.sc-iw{display:flex;background:var(--bg);border:1px solid var(--border);
+border-radius:8px;overflow:hidden;margin-bottom:10px;transition:border-color .2s;}
+.sc-iw:focus-within{border-color:var(--accent);}
+.sc-iw input{flex:1;background:transparent;border:none;outline:none;
+color:var(--text);font-family:var(--mono);font-size:13px;padding:11px 14px;}
+.sc-iw .sc-token{display:flex;align-items:center;gap:6px;padding:0 12px;
+font-family:var(--mono);font-size:10px;border-left:1px solid var(--border);
+white-space:nowrap;font-weight:700;}
+.swap-arrow{text-align:center;margin:6px 0;cursor:pointer;font-size:20px;
+transition:transform .2s;display:block;}
+.swap-arrow:hover{transform:rotate(180deg);}
+.sc-info{background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:12px;}
+.sci-row{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;}
+.sci-row .l{color:var(--muted);}
+.sci-row .v{font-family:var(--mono);font-size:10px;}
+.pct-row{display:flex;gap:4px;margin-bottom:10px;}
+.pct-b{flex:1;padding:5px;text-align:center;font-family:var(--mono);font-size:9px;
+cursor:pointer;border:1px solid var(--border);border-radius:5px;color:var(--muted);transition:all .2s;}
+.pct-b:hover,.pct-b.active{border-color:var(--accent);color:var(--accent);background:rgba(14,165,233,.06);}
+.btn-swap{width:100%;padding:12px;background:linear-gradient(135deg,#0284c7,#0ea5e9);
+border:none;border-radius:8px;color:#fff;font-family:var(--mono);font-size:11px;
+font-weight:700;cursor:pointer;transition:opacity .2s;text-transform:uppercase;letter-spacing:.5px;}
+.btn-liq{width:100%;padding:12px;background:linear-gradient(135deg,#059669,#10b981);
+border:none;border-radius:8px;color:#fff;font-family:var(--mono);font-size:11px;
+font-weight:700;cursor:pointer;transition:opacity .2s;text-transform:uppercase;letter-spacing:.5px;}
+.btn-bridge{width:100%;padding:12px;background:linear-gradient(135deg,#b45309,#f59e0b);
+border:none;border-radius:8px;color:#fff;font-family:var(--mono);font-size:11px;
+font-weight:700;cursor:pointer;transition:opacity .2s;text-transform:uppercase;letter-spacing:.5px;}
+.btn-stake{width:100%;padding:12px;background:linear-gradient(135deg,#4c1d95,#a78bfa);
+border:none;border-radius:8px;color:#fff;font-family:var(--mono);font-size:11px;
+font-weight:700;cursor:pointer;transition:opacity .2s;text-transform:uppercase;letter-spacing:.5px;}
+.btn-swap:hover,.btn-liq:hover,.btn-bridge:hover,.btn-stake:hover{opacity:.9;}
+
+/* POOL INFO */
+.pool-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+.pool-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.pc-hdr{padding:12px 16px;border-bottom:1px solid var(--border);font-family:var(--mono);
+font-size:9px;text-transform:uppercase;letter-spacing:.5px;}
+.pc-row{display:flex;justify-content:space-between;padding:10px 16px;
+border-bottom:1px solid rgba(13,30,46,.5);font-size:12px;}
+.pc-row:last-child{border-bottom:none;}
+.pc-label{color:var(--muted);}
+.pc-val{font-family:var(--mono);font-size:11px;font-weight:600;}
+
+/* TRADES */
+.trades-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px;}
+.trade-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;
+padding:9px 16px;font-family:var(--mono);font-size:10px;
+border-bottom:1px solid rgba(13,30,46,.4);animation:fadeIn .3s;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:translateY(0)}}
+.trade-hdr{background:var(--surface2);border-bottom:1px solid var(--border);}
+
+/* BRIDGE STATUS */
+.bridge-status{background:var(--surface);border:1px solid rgba(240,185,11,.2);
+border-radius:12px;padding:18px;margin-bottom:20px;}
+.bs-title{font-family:var(--mono);font-size:9px;text-transform:uppercase;
+letter-spacing:.5px;color:var(--bnb);margin-bottom:12px;}
+.bs-item{display:flex;align-items:center;gap:12px;padding:10px;
+background:var(--surface2);border-radius:8px;margin-bottom:8px;}
+.bs-status{font-family:var(--mono);font-size:8px;padding:3px 8px;border-radius:4px;}
+.bs-status.pending{background:rgba(245,158,11,.1);color:var(--amber);}
+.bs-status.done{background:rgba(16,185,129,.1);color:var(--green);}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface2);
+border:1px solid var(--border);border-radius:10px;padding:12px 18px;
+font-family:var(--mono);font-size:11px;z-index:9999;
+transform:translateY(20px);opacity:0;transition:all .3s;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.ok{border-color:rgba(16,185,129,.3);color:var(--green);}
+.toast.err{border-color:rgba(248,113,113,.3);color:var(--red);}
+.toast.bnb{border-color:rgba(240,185,11,.3);color:var(--bnb);}
+
+@media(max-width:900px){.main-grid{grid-template-columns:1fr}.pool-grid{grid-template-columns:1fr}.ph-stats{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:14px;">
+    <div class="back-btn" onclick="history.back()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      VOLVER
+    </div>
+    <div class="tb-logo">
+      <div class="tb-logo-text">TYPE<span>FISH</span></div>
+    </div>
+    <div class="pair-badge">
+      <span style="color:var(--accent)">TFISH</span>
+      <span style="color:var(--muted)">/</span>
+      <span style="color:var(--bnb)">BNB</span>
+      <span style="font-size:8px;color:var(--muted)">• Polygon</span>
+    </div>
+  </div>
+  <button class="connect-btn" id="walletBtn" onclick="connectWallet()">CONECTAR WALLET</button>
+</div>
+
+<main>
+  <!-- HERO -->
+  <div class="pair-hero">
+    <div class="ph-top">
+      <div class="ph-logos">
+        <div class="ph-logo" style="border-color:rgba(14,165,233,.4)">🐟</div>
+        <div class="ph-logo" style="border-color:rgba(240,185,11,.4)">🟡</div>
+      </div>
+      <div class="ph-info">
+        <h1>TFISH / BNB <span style="font-size:13px;color:var(--muted);font-weight:400">Liquidity Pool</span></h1>
+        <p>Par de trading en Polygon PoS · Fee 0.30% · Recompensas en TFISH</p>
+      </div>
+      <div style="margin-left:auto;text-align:right;">
+        <div style="font-family:var(--mono);font-size:28px;font-weight:700;" id="currentPrice">$0.0042</div>
+        <div style="font-family:var(--mono);font-size:11px;padding:3px 10px;border-radius:5px;
+          display:inline-block;margin-top:4px;" id="priceChange">— %</div>
+      </div>
+    </div>
+    <div class="ph-stats">
+      <div class="phs"><div class="phs-label">Liquidez total</div><div class="phs-val" id="totalLiq" style="color:var(--accent)">$0</div></div>
+      <div class="phs"><div class="phs-label">Volumen 24h</div><div class="phs-val" id="vol24h" style="color:var(--green)">$0</div></div>
+      <div class="phs"><div class="phs-label">Fees 24h</div><div class="phs-val" id="fees24h" style="color:var(--amber)">$0</div></div>
+      <div class="phs"><div class="phs-label">APR LP</div><div class="phs-val" id="aprLP" style="color:#a78bfa">0%</div></div>
+      <div class="phs"><div class="phs-label">Bridges</div><div class="phs-val" id="totalBridges" style="color:var(--bnb)">0</div></div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+    <!-- CHART -->
+    <div>
+      <div class="chart-card" style="margin-bottom:16px;">
+        <div class="cc-hdr">
+          <div class="cc-title">Precio TFISH/BNB</div>
+          <div class="tf-btns">
+            <div class="tf-btn active" onclick="setTF(this,'1h')">1H</div>
+            <div class="tf-btn" onclick="setTF(this,'4h')">4H</div>
+            <div class="tf-btn" onclick="setTF(this,'1d')">1D</div>
+            <div class="tf-btn" onclick="setTF(this,'1w')">1S</div>
+          </div>
+        </div>
+        <canvas id="pairChart" height="280"></canvas>
+      </div>
+
+      <!-- TRADES -->
+      <div class="trades-card">
+        <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);">
+          <div style="width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green);animation:pulse 2s infinite;"></div>
+          <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);">Trades recientes</div>
+        </div>
+        <div class="trade-row trade-hdr" style="font-size:8px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);">
+          <span>Tipo</span><span>TFISH</span><span>BNB</span><span>Precio</span><span>Hora</span>
+        </div>
+        <div id="tradesLog"></div>
+      </div>
+    </div>
+
+    <!-- SWAP / LIQ / BRIDGE / STAKE PANEL -->
+    <div>
+      <div class="swap-card">
+        <div class="sc-tabs">
+          <div class="sc-tab swap active" onclick="setTab('swap',this)">SWAP</div>
+          <div class="sc-tab liq"  onclick="setTab('liq',this)">POOL</div>
+          <div class="sc-tab bridge" onclick="setTab('bridge',this)">BRIDGE</div>
+          <div class="sc-tab stake" onclick="setTab('stake',this)">EARN</div>
+        </div>
+
+        <!-- SWAP -->
+        <div class="sc-body" id="panelSwap">
+          <div class="sc-label"><span>De</span><span id="balFrom" style="color:var(--accent)">Balance: —</span></div>
+          <div class="sc-iw">
+            <input type="number" id="amtFrom" placeholder="0.00" oninput="calcSwap()"/>
+            <div class="sc-token" id="tokenFrom" style="color:var(--accent)">🐟 TFISH</div>
+          </div>
+          <div class="swap-arrow" onclick="flipSwap()">⇅</div>
+          <div class="sc-label"><span>A</span><span id="balTo" style="color:var(--bnb)">Balance: —</span></div>
+          <div class="sc-iw">
+            <input type="number" id="amtTo" placeholder="0.00" readonly style="color:var(--muted)"/>
+            <div class="sc-token" id="tokenTo" style="color:var(--bnb)">🟡 BNB</div>
+          </div>
+          <div class="sc-info">
+            <div class="sci-row"><span class="l">Precio</span><span class="v" id="swapRate">1 TFISH = — BNB</span></div>
+            <div class="sci-row"><span class="l">Fee (0.30%)</span><span class="v" id="swapFee">—</span></div>
+            <div class="sci-row"><span class="l">Slippage</span><span class="v" style="color:var(--amber)">0.5%</span></div>
+            <div class="sci-row"><span class="l">Impacto precio</span><span class="v" id="priceImpact" style="color:var(--green)">< 0.01%</span></div>
+          </div>
+          <button class="btn-swap" onclick="executeSwap()">SWAP TFISH ⇄ BNB</button>
+        </div>
+
+        <!-- LIQUIDITY -->
+        <div class="sc-body" id="panelLiq" style="display:none">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:12px;">
+            Agrega liquidez y gana 0.25% de cada swap + recompensas en TFISH
+          </div>
+          <div class="sc-label"><span>TFISH a depositar</span><span style="color:var(--accent)" id="liqBalTfish">Balance: —</span></div>
+          <div class="sc-iw">
+            <input type="number" id="liqTfish" placeholder="0.00" oninput="calcLiq()"/>
+            <div class="sc-token" style="color:var(--accent)">🐟 TFISH</div>
+          </div>
+          <div class="sc-label"><span>BNB a depositar</span><span style="color:var(--bnb)" id="liqBalBnb">Balance: —</span></div>
+          <div class="sc-iw">
+            <input type="number" id="liqBnb" placeholder="0.00" oninput="calcLiqBnb()"/>
+            <div class="sc-token" style="color:var(--bnb)">🟡 BNB</div>
+          </div>
+          <div class="sc-info">
+            <div class="sci-row"><span class="l">LP tokens a recibir</span><span class="v" id="liqLP" style="color:var(--green)">—</span></div>
+            <div class="sci-row"><span class="l">Participación del pool</span><span class="v" id="liqShare">—</span></div>
+            <div class="sci-row"><span class="l">APR estimado</span><span class="v" id="liqAPR" style="color:#a78bfa">~36.5%</span></div>
+          </div>
+          <button class="btn-liq" onclick="addLiquidity()">AGREGAR LIQUIDEZ</button>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+            <div style="font-family:var(--mono);font-size:8px;color:var(--muted);margin-bottom:6px;">MIS LP TOKENS</div>
+            <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--green)" id="myLP">0.00 TFISH-BNB LP</div>
+            <button onclick="removeLiquidity()" style="margin-top:8px;width:100%;padding:9px;background:transparent;border:1px solid var(--red);border-radius:7px;color:var(--red);font-family:var(--mono);font-size:10px;cursor:pointer;">RETIRAR LIQUIDEZ</button>
+          </div>
+        </div>
+
+        <!-- BRIDGE -->
+        <div class="sc-body" id="panelBridge" style="display:none">
+          <div style="background:rgba(240,185,11,.06);border:1px solid rgba(240,185,11,.2);border-radius:8px;padding:12px;margin-bottom:14px;">
+            <div style="font-family:var(--mono);font-size:9px;color:var(--bnb);margin-bottom:4px;">✈️ BRIDGE TFISH → BNB CHAIN</div>
+            <div style="font-size:12px;color:var(--muted);">Mueve tus TFISH de Polygon a BNB Chain. Mínimo 100 TFISH.</div>
+          </div>
+          <div class="sc-label"><span>TFISH a enviar</span><span style="color:var(--accent)" id="bridgeBal">Balance: —</span></div>
+          <div class="sc-iw">
+            <input type="number" id="bridgeAmt" placeholder="100" min="100" oninput="calcBridge()"/>
+            <div class="sc-token" style="color:var(--accent)">🐟 TFISH</div>
+          </div>
+          <div class="sc-label" style="margin-top:8px;"><span>Dirección destino (BNB Chain)</span></div>
+          <div class="sc-iw">
+            <input type="text" id="bridgeDest" placeholder="0x..." style="font-size:11px;"/>
+          </div>
+          <div class="sc-info">
+            <div class="sci-row"><span class="l">Red destino</span><span class="v" style="color:var(--bnb)">BNB Smart Chain</span></div>
+            <div class="sci-row"><span class="l">Recibirás</span><span class="v" id="bridgeReceive" style="color:var(--green)">—</span></div>
+            <div class="sci-row"><span class="l">Fee bridge</span><span class="v" style="color:var(--amber)">0.1% + gas</span></div>
+            <div class="sci-row"><span class="l">Tiempo estimado</span><span class="v">~5-15 min</span></div>
+          </div>
+          <button class="btn-bridge" onclick="initBridge()">INICIAR BRIDGE →</button>
+        </div>
+
+        <!-- EARN/STAKE -->
+        <div class="sc-body" id="panelStake" style="display:none">
+          <div style="background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.2);border-radius:8px;padding:14px;margin-bottom:14px;text-align:center;">
+            <div style="font-family:var(--mono);font-size:9px;color:#a78bfa;margin-bottom:6px;">RECOMPENSAS PENDIENTES</div>
+            <div style="font-family:var(--mono);font-size:24px;font-weight:700;color:#a78bfa" id="pendingReward">0.00 TFISH</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px;" id="pendingUSD">≈ $0.00 USD</div>
+          </div>
+          <div class="sc-label"><span>LP Tokens a stakear</span><span style="color:var(--green)" id="stakeBalLP">Disponibles: 0</span></div>
+          <div class="sc-iw">
+            <input type="number" id="stakeAmt" placeholder="0.00"/>
+            <div class="sc-token" style="color:var(--green);font-size:9px;">TFISH-BNB LP</div>
+          </div>
+          <div class="pct-row">
+            <div class="pct-b" onclick="setPctStake(25,this)">25%</div>
+            <div class="pct-b" onclick="setPctStake(50,this)">50%</div>
+            <div class="pct-b" onclick="setPctStake(75,this)">75%</div>
+            <div class="pct-b" onclick="setPctStake(100,this)">MAX</div>
+          </div>
+          <div class="sc-info">
+            <div class="sci-row"><span class="l">LP stakeados</span><span class="v" id="myStaked">0.00</span></div>
+            <div class="sci-row"><span class="l">APR</span><span class="v" style="color:#a78bfa">~36.5%</span></div>
+            <div class="sci-row"><span class="l">Recompensa/día</span><span class="v" id="dailyReward">0.00 TFISH</span></div>
+          </div>
+          <button class="btn-stake" onclick="stakeLPs()" style="margin-bottom:8px;">STAKEAR LP TOKENS</button>
+          <button onclick="claimRewards()" style="width:100%;padding:9px;background:transparent;border:1px solid #a78bfa;border-radius:7px;color:#a78bfa;font-family:var(--mono);font-size:10px;cursor:pointer;margin-bottom:8px;">COBRAR RECOMPENSAS</button>
+          <button onclick="unstakeLPs()" style="width:100%;padding:9px;background:transparent;border:1px solid var(--red);border-radius:7px;color:var(--red);font-family:var(--mono);font-size:10px;cursor:pointer;">RETIRAR LP</button>
+        </div>
+      </div>
+
+      <!-- BRIDGE HISTORY -->
+      <div class="bridge-status" style="margin-top:16px;" id="bridgeHistory">
+        <div class="bs-title">// Historial de bridges</div>
+        <div id="bridgeList">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">Sin bridges registrados</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POOL INFO -->
+  <div class="pool-grid">
+    <div class="pool-card">
+      <div class="pc-hdr" style="color:var(--accent)">// Reservas del Pool</div>
+      <div class="pc-row"><span class="pc-label">TFISH en pool</span><span class="pc-val" id="poolTFISH" style="color:var(--accent)">—</span></div>
+      <div class="pc-row"><span class="pc-label">BNB en pool</span><span class="pc-val" id="poolBNB" style="color:var(--bnb)">—</span></div>
+      <div class="pc-row"><span class="pc-label">LP tokens totales</span><span class="pc-val" id="poolLP">—</span></div>
+      <div class="pc-row"><span class="pc-label">LP stakeados</span><span class="pc-val" id="poolStaked" style="color:#a78bfa">—</span></div>
+      <div class="pc-row"><span class="pc-label">Fees acumulados</span><span class="pc-val" id="poolFees" style="color:var(--green)">—</span></div>
+    </div>
+    <div class="pool-card">
+      <div class="pc-hdr" style="color:var(--bnb)">// Binance Price Feed</div>
+      <div class="pc-row"><span class="pc-label">BNB/USD (Binance)</span><span class="pc-val" id="bnbPrice" style="color:var(--bnb)">$412.50</span></div>
+      <div class="pc-row"><span class="pc-label">BNB/USD 24h %</span><span class="pc-val" id="bnbChange" style="color:var(--green)">+0.98%</span></div>
+      <div class="pc-row"><span class="pc-label">TFISH/USD</span><span class="pc-val" id="tfishUSD" style="color:var(--accent)">$0.00</span></div>
+      <div class="pc-row"><span class="pc-label">TFISH/BNB</span><span class="pc-val" id="tfishBnbRate">—</span></div>
+      <div class="pc-row"><span class="pc-label">Última actualización</span><span class="pc-val" id="lastUpdate" style="color:var(--muted)">—</span></div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════════════
+const PAIR_ABI = [
+  "function swapTFISHtoBNB(uint256,uint256,address) returns(uint256)",
+  "function swapBNBtoTFISH(uint256,uint256,address) returns(uint256)",
+  "function addLiquidity(uint256,uint256,uint256,uint256) returns(uint256)",
+  "function removeLiquidity(uint256,uint256,uint256) returns(uint256,uint256)",
+  "function stakLP(uint256)",
+  "function unstakLP(uint256)",
+  "function claimReward()",
+  "function initiateBridge(uint256,string)",
+  "function getPrice() view returns(uint256,uint256)",
+  "function getAmountOut(uint256,bool) view returns(uint256,uint256)",
+  "function getPoolStats() view returns(uint256,uint256,uint256,uint256,uint256,uint256)",
+  "function getPendingReward(address) view returns(uint256)",
+  "function balanceOf(address) view returns(uint256)",
+];
+
+const PAIR_ADDR  = "0x..."; // Reemplazar con dirección real
+let provider, signer, pairContract, walletAddr;
+let isTfishFirst = true;
+let bridgesLocal = [];
+let bnbPriceUSD  = 412.50;
+let tfishPrice   = 0.0042;
+
+// ════════════════════════════════════════════
+//  WALLET
+// ════════════════════════════════════════════
+async function connectWallet() {
+  if (!window.ethereum) { showToast('Instala MetaMask', 'err'); return; }
+  try {
+    provider = new ethers.BrowserProvider(window.ethereum);
+    signer   = await provider.getSigner();
+    walletAddr = await signer.getAddress();
+    pairContract = new ethers.Contract(PAIR_ADDR, PAIR_ABI, signer);
+    const btn = document.getElementById('walletBtn');
+    btn.textContent = walletAddr.slice(0,6)+'...'+walletAddr.slice(-4);
+    btn.classList.add('connected');
+    showToast('✓ Wallet conectada', 'ok');
+    await refreshAll();
+  } catch(e) { showToast('Cancelado', 'err'); }
+}
+
+// ════════════════════════════════════════════
+//  DATOS DEL POOL (simulados si no hay contrato)
+// ════════════════════════════════════════════
+let poolData = {
+  reserveTFISH: 10000, reserveBNB: 5,
+  totalLP: 223, totalStaked: 180,
+  totalFees: 42.1, totalBridges: 0,
+};
+
+async function refreshAll() {
+  if (pairContract) {
+    try {
+      const stats = await pairContract.getPoolStats();
+      poolData.reserveTFISH = parseFloat(ethers.formatEther(stats[0]));
+      poolData.reserveBNB   = parseFloat(ethers.formatEther(stats[1]));
+      poolData.totalLP      = parseFloat(ethers.formatEther(stats[2]));
+      poolData.totalStaked  = parseFloat(ethers.formatEther(stats[3]));
+      poolData.totalFees    = parseFloat(ethers.formatEther(stats[4]));
+      poolData.totalBridges = Number(stats[5]);
+    } catch(e) { console.log("Usando datos simulados"); }
+  }
+  updateUI();
+}
+
+function updateUI() {
+  const liq = (poolData.reserveTFISH * tfishPrice + poolData.reserveBNB * bnbPriceUSD);
+  const vol = liq * 0.08;
+  const apr = ((vol * 0.003 * 365) / liq * 100).toFixed(1);
+
+  document.getElementById('totalLiq').textContent   = '$' + liq.toLocaleString('en-US', {maximumFractionDigits:0});
+  document.getElementById('vol24h').textContent      = '$' + vol.toLocaleString('en-US', {maximumFractionDigits:0});
+  document.getElementById('fees24h').textContent     = '$' + (vol * 0.003).toFixed(2);
+  document.getElementById('aprLP').textContent       = apr + '%';
+  document.getElementById('totalBridges').textContent = poolData.totalBridges;
+  document.getElementById('poolTFISH').textContent   = poolData.reserveTFISH.toLocaleString() + ' TFISH';
+  document.getElementById('poolBNB').textContent     = poolData.reserveBNB.toFixed(4) + ' BNB';
+  document.getElementById('poolLP').textContent      = poolData.totalLP.toFixed(4);
+  document.getElementById('poolStaked').textContent  = poolData.totalStaked.toFixed(4);
+  document.getElementById('poolFees').textContent    = poolData.totalFees.toFixed(4) + ' TFISH';
+  document.getElementById('currentPrice').textContent = '$' + tfishPrice.toFixed(6);
+  document.getElementById('tfishUSD').textContent    = '$' + tfishPrice.toFixed(6);
+  document.getElementById('liqAPR').textContent      = '~' + apr + '%';
+
+  const tfishBnb = tfishPrice / bnbPriceUSD;
+  document.getElementById('tfishBnbRate').textContent = tfishBnb.toFixed(8) + ' BNB';
+  document.getElementById('swapRate').textContent     = '1 TFISH = ' + tfishBnb.toFixed(8) + ' BNB';
+  document.getElementById('lastUpdate').textContent   = new Date().toLocaleTimeString('es-MX');
+}
+
+// ════════════════════════════════════════════
+//  BINANCE PRICE FEED (API real)
+// ════════════════════════════════════════════
+async function fetchBNBPrice() {
+  try {
+    const r = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BNBUSDT');
+    const d = await r.json();
+    bnbPriceUSD = parseFloat(d.lastPrice);
+    const chg   = parseFloat(d.priceChangePercent);
+    document.getElementById('bnbPrice').textContent  = '$' + bnbPriceUSD.toFixed(2);
+    document.getElementById('bnbChange').textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
+    document.getElementById('bnbChange').style.color = chg >= 0 ? 'var(--green)' : 'var(--red)';
+    updateUI();
+  } catch(e) {
+    // Si CORS bloquea, usar precio simulado
+    bnbPriceUSD *= (1 + (Math.random() - .499) * .002);
+    document.getElementById('bnbPrice').textContent = '$' + bnbPriceUSD.toFixed(2);
+  }
+}
+
+// ════════════════════════════════════════════
+//  SWAP
+// ════════════════════════════════════════════
+function flipSwap() {
+  isTfishFirst = !isTfishFirst;
+  document.getElementById('tokenFrom').innerHTML = isTfishFirst ? '🐟 TFISH' : '🟡 BNB';
+  document.getElementById('tokenTo').innerHTML   = isTfishFirst ? '🟡 BNB'   : '🐟 TFISH';
+  document.getElementById('tokenFrom').style.color = isTfishFirst ? 'var(--accent)' : 'var(--bnb)';
+  document.getElementById('tokenTo').style.color   = isTfishFirst ? 'var(--bnb)'    : 'var(--accent)';
+  document.getElementById('amtFrom').value = '';
+  document.getElementById('amtTo').value   = '';
+  calcSwap();
+}
+
+function calcSwap() {
+  const amtIn = parseFloat(document.getElementById('amtFrom').value) || 0;
+  if (!amtIn) { document.getElementById('amtTo').value = ''; return; }
+  const fee   = amtIn * 0.003;
+  const amtNet = amtIn - fee;
+  let amtOut;
+  if (isTfishFirst) {
+    amtOut = (amtNet * poolData.reserveBNB) / (poolData.reserveTFISH + amtNet);
+  } else {
+    amtOut = (amtNet * poolData.reserveTFISH) / (poolData.reserveBNB + amtNet);
+  }
+  document.getElementById('amtTo').value   = amtOut.toFixed(6);
+  document.getElementById('swapFee').textContent = fee.toFixed(6) + (isTfishFirst ? ' TFISH' : ' BNB');
+  const impact = (amtIn / (isTfishFirst ? poolData.reserveTFISH : poolData.reserveBNB) * 100).toFixed(3);
+  document.getElementById('priceImpact').textContent = impact + '%';
+  document.getElementById('priceImpact').style.color = parseFloat(impact) > 1 ? 'var(--red)' : 'var(--green)';
+}
+
+async function executeSwap() {
+  const amtIn = parseFloat(document.getElementById('amtFrom').value) || 0;
+  if (!amtIn) { showToast('Ingresa una cantidad', 'err'); return; }
+  const btn = document.querySelector('.btn-swap'); btn.textContent = 'PROCESANDO...'; btn.disabled = true;
+  try {
+    if (pairContract && walletAddr) {
+      const amtInWei = ethers.parseEther(amtIn.toString());
+      if (isTfishFirst) {
+        await pairContract.swapTFISHtoBNB(amtInWei, 0, walletAddr);
+      } else {
+        await pairContract.swapBNBtoTFISH(amtInWei, 0, walletAddr);
+      }
+      showToast('✓ Swap completado exitosamente', 'ok');
+    } else {
+      // Simulación
+      await new Promise(r => setTimeout(r, 1500));
+      const amtOut = parseFloat(document.getElementById('amtTo').value);
+      showToast(`✓ Swap: ${amtIn.toFixed(4)} ${isTfishFirst ? 'TFISH → ' + amtOut.toFixed(6) + ' BNB' : 'BNB → ' + amtOut.toFixed(2) + ' TFISH'}`, 'ok');
+      addTrade(amtIn, amtOut);
+      tfishPrice *= (1 + (Math.random() - .499) * .005);
+      updateUI();
+    }
+    document.getElementById('amtFrom').value = '';
+    document.getElementById('amtTo').value   = '';
+  } catch(e) { showToast('Error: ' + e.message, 'err'); }
+  finally { btn.textContent = 'SWAP TFISH ⇄ BNB'; btn.disabled = false; }
+}
+
+// ════════════════════════════════════════════
+//  LIQUIDITY
+// ════════════════════════════════════════════
+function calcLiq() {
+  const tfish = parseFloat(document.getElementById('liqTfish').value) || 0;
+  if (!tfish || poolData.reserveTFISH === 0) return;
+  const bnb = (tfish * poolData.reserveBNB) / poolData.reserveTFISH;
+  document.getElementById('liqBnb').value = bnb.toFixed(6);
+  const lp = Math.sqrt(tfish * bnb);
+  document.getElementById('liqLP').textContent = lp.toFixed(4) + ' LP tokens';
+  const share = (lp / (poolData.totalLP + lp) * 100).toFixed(4);
+  document.getElementById('liqShare').textContent = share + '%';
+}
+function calcLiqBnb() {
+  const bnb = parseFloat(document.getElementById('liqBnb').value) || 0;
+  if (!bnb || poolData.reserveBNB === 0) return;
+  const tfish = (bnb * poolData.reserveTFISH) / poolData.reserveBNB;
+  document.getElementById('liqTfish').value = tfish.toFixed(4);
+  calcLiq();
+}
+
+async function addLiquidity() {
+  const tfish = parseFloat(document.getElementById('liqTfish').value) || 0;
+  const bnb   = parseFloat(document.getElementById('liqBnb').value)   || 0;
+  if (!tfish || !bnb) { showToast('Completa los campos', 'err'); return; }
+  const btn = document.querySelector('.btn-liq'); btn.textContent = 'PROCESANDO...'; btn.disabled = true;
+  await new Promise(r => setTimeout(r, 1500));
+  poolData.reserveTFISH += tfish;
+  poolData.reserveBNB   += bnb;
+  poolData.totalLP      += Math.sqrt(tfish * bnb);
+  document.getElementById('myLP').textContent = poolData.totalLP.toFixed(4) + ' TFISH-BNB LP';
+  updateUI();
+  showToast('✓ Liquidez agregada: ' + tfish.toFixed(2) + ' TFISH + ' + bnb.toFixed(4) + ' BNB', 'ok');
+  btn.textContent = 'AGREGAR LIQUIDEZ'; btn.disabled = false;
+}
+
+async function removeLiquidity() {
+  showToast('Retirando liquidez...', 'ok');
+  await new Promise(r => setTimeout(r, 1500));
+  showToast('✓ Liquidez retirada exitosamente', 'ok');
+}
+
+// ════════════════════════════════════════════
+//  BRIDGE
+// ════════════════════════════════════════════
+function calcBridge() {
+  const amt = parseFloat(document.getElementById('bridgeAmt').value) || 0;
+  const receive = amt * 0.999; // 0.1% fee
+  document.getElementById('bridgeReceive').textContent = receive.toFixed(4) + ' TFISH (BNB Chain)';
+}
+
+async function initBridge() {
+  const amt  = parseFloat(document.getElementById('bridgeAmt').value) || 0;
+  const dest = document.getElementById('bridgeDest').value;
+  if (!amt || amt < 100) { showToast('Mínimo 100 TFISH para bridge', 'err'); return; }
+  if (!dest || !dest.startsWith('0x')) { showToast('Dirección destino inválida', 'err'); return; }
+  const btn = document.querySelector('.btn-bridge'); btn.textContent = 'INICIANDO...'; btn.disabled = true;
+  await new Promise(r => setTimeout(r, 1800));
+  const id = 'BRG-' + Math.random().toString(36).slice(2,8).toUpperCase();
+  bridgesLocal.push({ id, amt, dest: dest.slice(0,10)+'...', status: 'pending', time: new Date().toLocaleTimeString('es-MX') });
+  poolData.totalBridges++;
+  renderBridgeHistory();
+  updateUI();
+  showToast('✓ Bridge iniciado: ' + id + ' — ~5-15 min', 'bnb');
+  setTimeout(() => {
+    bridgesLocal[bridgesLocal.length-1].status = 'done';
+    renderBridgeHistory();
+    showToast('✓ Bridge completado: ' + amt + ' TFISH en BNB Chain', 'ok');
+  }, 15000);
+  btn.textContent = 'INICIAR BRIDGE →'; btn.disabled = false;
+}
+
+function renderBridgeHistory() {
+  const el = document.getElementById('bridgeList');
+  if (!bridgesLocal.length) { el.innerHTML = '<div style="font-family:var(--mono);font-size:10px;color:var(--muted);">Sin bridges registrados</div>'; return; }
+  el.innerHTML = bridgesLocal.slice(-5).reverse().map(b => `
+    <div class="bs-item">
+      <div style="flex:1">
+        <div style="font-family:var(--mono);font-size:11px;font-weight:700">${b.id}</div>
+        <div style="font-size:10px;color:var(--muted)">${b.amt} TFISH → ${b.dest} · ${b.time}</div>
+      </div>
+      <span class="bs-status ${b.status}">${b.status === 'pending' ? '⏳ PENDIENTE' : '✓ COMPLETADO'}</span>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════
+//  STAKE
+// ════════════════════════════════════════════
+let myStaked = 0, myReward = 0;
+function setPctStake(pct, el) {
+  document.querySelectorAll('.pct-b').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('stakeAmt').value = (poolData.totalLP * pct / 100).toFixed(4);
+}
+async function stakeLPs() {
+  const amt = parseFloat(document.getElementById('stakeAmt').value) || 0;
+  if (!amt) { showToast('Ingresa una cantidad', 'err'); return; }
+  await new Promise(r => setTimeout(r, 1200));
+  myStaked += amt;
+  document.getElementById('myStaked').textContent = myStaked.toFixed(4);
+  document.getElementById('dailyReward').textContent = (myStaked * 0.001).toFixed(4) + ' TFISH';
+  showToast('✓ LP tokens stakeados: ' + amt.toFixed(4), 'ok');
+}
+async function claimRewards() {
+  myReward += myStaked * 0.001;
+  document.getElementById('pendingReward').textContent = myReward.toFixed(4) + ' TFISH';
+  await new Promise(r => setTimeout(r, 1200));
+  showToast('✓ Recompensas cobradas: ' + myReward.toFixed(4) + ' TFISH', 'ok');
+  myReward = 0;
+  document.getElementById('pendingReward').textContent = '0.00 TFISH';
+}
+async function unstakeLPs() {
+  await new Promise(r => setTimeout(r, 1200));
+  showToast('✓ LP tokens retirados: ' + myStaked.toFixed(4), 'ok');
+  myStaked = 0;
+  document.getElementById('myStaked').textContent = '0.00';
+}
+
+// Acumular recompensas
+setInterval(() => {
+  myReward += myStaked * 0.0001;
+  document.getElementById('pendingReward').textContent = myReward.toFixed(4) + ' TFISH';
+  document.getElementById('pendingUSD').textContent = '≈ $' + (myReward * tfishPrice).toFixed(4) + ' USD';
+}, 5000);
+
+// ════════════════════════════════════════════
+//  TRADES EN VIVO
+// ════════════════════════════════════════════
+function addTrade(tfishAmt, bnbAmt) {
+  const log  = document.getElementById('tradesLog');
+  const buy  = Math.random() > .5;
+  const t    = new Date().toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const tAmt = tfishAmt || (Math.random() * 5000 + 100).toFixed(2);
+  const bAmt = bnbAmt   || (tAmt * tfishPrice / bnbPriceUSD).toFixed(6);
+  const el   = document.createElement('div');
+  el.className = 'trade-row';
+  el.innerHTML = `
+    <span style="color:${buy?'var(--green)':'var(--red)'}">${buy?'COMPRA':'VENTA'}</span>
+    <span style="color:var(--accent)">${parseFloat(tAmt).toFixed(2)}</span>
+    <span style="color:var(--bnb)">${parseFloat(bAmt).toFixed(6)}</span>
+    <span>$${tfishPrice.toFixed(6)}</span>
+    <span style="color:var(--muted)">${t}</span>`;
+  log.prepend(el);
+  if (log.children.length > 12) log.lastElementChild.remove();
+}
+
+// ════════════════════════════════════════════
+//  CHART
+// ════════════════════════════════════════════
+const canvas = document.getElementById('pairChart');
+const ctx    = canvas.getContext('2d');
+let candles  = [];
+
+function genCandles(n=80) {
+  candles = []; let p = tfishPrice / bnbPriceUSD;
+  for (let i=0;i<n;i++) {
+    const o=p,h=o*(1+Math.random()*.02),l=o*(1-Math.random()*.015);
+    candles.push({o,h,l,c:l+(h-l)*Math.random(),vol:Math.random()*1000+100});
+    p=candles[i].c;
+  }
+}
+
+function drawChart() {
+  const W=canvas.offsetWidth, H=280;
+  canvas.width=W*devicePixelRatio; canvas.height=H*devicePixelRatio;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  ctx.scale(devicePixelRatio,devicePixelRatio);
+  ctx.fillStyle='#020609'; ctx.fillRect(0,0,W,H);
+  const pad={l:65,r:10,t:14,b:50};
+  const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b-40;
+  if(!candles.length) return;
+  const prices=candles.flatMap(c=>[c.h,c.l]);
+  const minP=Math.min(...prices),maxP=Math.max(...prices);
+  const pRange=maxP-minP||0.000001;
+  const pToY=p=>pad.t+ch-(p-minP)/pRange*ch;
+  const bw=Math.max(2,cw/candles.length-1);
+  const bx=i=>pad.l+i*(cw/candles.length)+bw/2;
+  ctx.strokeStyle='rgba(13,30,46,.8)'; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=pad.t+ch*i/4;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
+    const price=(maxP-(maxP-minP)*i/4);
+    ctx.fillStyle='#3d5a73'; ctx.font='9px Space Mono'; ctx.textAlign='right';
+    ctx.fillText(price.toFixed(8),pad.l-4,y+3);
+  }
+  candles.forEach((c,i)=>{
+    const x=bx(i),up=c.c>=c.o;
+    const col=up?'#10b981':'#f87171';
+    ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x,pToY(c.h)); ctx.lineTo(x,pToY(c.l)); ctx.stroke();
+    const bodyY=pToY(Math.max(c.o,c.c)),bodyH=Math.max(1,Math.abs(pToY(c.o)-pToY(c.c)));
+    ctx.fillRect(x-bw/2,bodyY,bw,bodyH);
+  });
+  // MA7
+  ctx.beginPath(); ctx.strokeStyle='rgba(240,185,11,.6)'; ctx.lineWidth=1;
+  for(let i=6;i<candles.length;i++){
+    const ma=candles.slice(i-6,i+1).reduce((s,c)=>s+c.c,0)/7;
+    i===6?ctx.moveTo(bx(i),pToY(ma)):ctx.lineTo(bx(i),pToY(ma));
+  } ctx.stroke();
+  // Precio actual
+  const cy=pToY(candles[candles.length-1].c);
+  ctx.strokeStyle='rgba(240,185,11,.4)'; ctx.setLineDash([4,4]); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pad.l,cy); ctx.lineTo(W-pad.r,cy); ctx.stroke();
+  ctx.setLineDash([]);
+  // Volumen
+  const vPad=pad.t+ch+10,vH=30;
+  const maxV=Math.max(...candles.map(c=>c.vol));
+  candles.forEach((c,i)=>{
+    ctx.fillStyle=c.c>=c.o?'rgba(16,185,129,.25)':'rgba(248,113,113,.25)';
+    const h=(c.vol/maxV)*vH;
+    ctx.fillRect(bx(i)-bw/2,vPad+vH-h,bw,h);
+  });
+}
+
+function setTF(el,tf) {
+  document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active'); genCandles(); drawChart();
+}
+
+// Live candle update
+setInterval(()=>{
+  tfishPrice *= (1+(Math.random()-.499)*.003);
+  if(candles.length>0){
+    candles[candles.length-1].c = tfishPrice/bnbPriceUSD;
+    if(Math.random()>.7){
+      candles.push({o:candles[candles.length-1].c,h:0,l:0,c:0,vol:Math.random()*500});
+      if(candles.length>100) candles.shift();
+    }
+  }
+  drawChart();
+  addTrade(null,null);
+  const chgEl=document.getElementById('priceChange');
+  const chg=((tfishPrice-0.0042)/0.0042*100).toFixed(2);
+  chgEl.textContent=(chg>=0?'▲ +':'▼ ')+chg+'% (24h)';
+  chgEl.style.background=chg>=0?'rgba(16,185,129,.1)':'rgba(248,113,113,.1)';
+  chgEl.style.color=chg>=0?'var(--green)':'var(--red)';
+  document.getElementById('currentPrice').textContent='$'+tfishPrice.toFixed(6);
+  updateUI();
+},2500);
+
+// ════════════════════════════════════════════
+//  UI HELPERS
+// ════════════════════════════════════════════
+function setTab(tab, el) {
+  document.querySelectorAll('.sc-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ['panelSwap','panelLiq','panelBridge','panelStake'].forEach(p=>{
+    document.getElementById(p).style.display='none';
+  });
+  const map={swap:'panelSwap',liq:'panelLiq',bridge:'panelBridge',stake:'panelStake'};
+  document.getElementById(map[tab]).style.display='block';
+}
+
+function showToast(msg, type='ok') {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast show '+type;
+  setTimeout(()=>t.className='toast',4000);
+}
+
+// ════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════
+window.addEventListener('load', ()=>{
+  genCandles();
+  setTimeout(()=>{drawChart(); addTrade(); addTrade(); addTrade();}, 100);
+  fetchBNBPrice();
+  setInterval(fetchBNBPrice, 10000);
+  updateUI();
+  renderBridgeHistory();
+  if(window.ethereum && window.ethereum.selectedAddress) connectWallet();
+});
+window.addEventListener('resize', ()=>drawChart());
+</script>
+</body>
+</html>
